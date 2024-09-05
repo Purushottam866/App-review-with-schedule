@@ -2,6 +2,8 @@ package com.linkedinAppReview.dto;
 
 import org.springframework.stereotype.Component;
 
+
+
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -28,4 +30,7 @@ public class SocialAccounts {
 	 
 	 @OneToOne(cascade = CascadeType.ALL)
 	 private LinkedInProfileDto linkedInProfileDto;
+	 
+	 @OneToOne(cascade = CascadeType.ALL)
+	 private RedditDto redditDto; 
 }

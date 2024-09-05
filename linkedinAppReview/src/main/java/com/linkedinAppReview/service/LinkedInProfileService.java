@@ -93,7 +93,7 @@ public class LinkedInProfileService {
          headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
 
          MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
-         body.add("grant_type", "authorization_code");
+         body.add("grant_type", "authorization_code"); 
          body.add("code", code);
          body.add("client_id", clientId);
          body.add("client_secret", clientSecret);

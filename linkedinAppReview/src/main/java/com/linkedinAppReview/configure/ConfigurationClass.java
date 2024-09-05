@@ -4,11 +4,14 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
+import org.springframework.scheduling.TaskScheduler;
+import org.springframework.scheduling.concurrent.ConcurrentTaskScheduler;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
@@ -115,5 +118,11 @@ public class ConfigurationClass {
 	public ErrorResponse getErrorResponse() {
 		return new ErrorResponse();
 	}
+	
+	 @Bean
+	 public TaskScheduler taskScheduler() {
+	     ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(10); // Number of threads
+	     return new ConcurrentTaskScheduler(executor); // Spring TaskScheduler wrapper
+	 }
 
-}
+} 

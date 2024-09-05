@@ -13,6 +13,7 @@ import com.linkedinAppReview.dao.InstagramUserDao;
 import com.linkedinAppReview.dao.LinkedInPageDao;
 import com.linkedinAppReview.dao.LinkedInProfileDao;
 import com.linkedinAppReview.dao.QuantumShareUserDao;
+import com.linkedinAppReview.dao.RedditDao;
 import com.linkedinAppReview.dao.SocialAccountDao;
 import com.linkedinAppReview.dto.FaceBookUser;
 import com.linkedinAppReview.dto.FacebookPageDetails;
@@ -20,8 +21,10 @@ import com.linkedinAppReview.dto.InstagramUser;
 import com.linkedinAppReview.dto.LinkedInPageDto;
 import com.linkedinAppReview.dto.LinkedInProfileDto;
 import com.linkedinAppReview.dto.QuantumShareUser;
+import com.linkedinAppReview.dto.RedditDto;
 import com.linkedinAppReview.dto.SocialAccounts;
 import com.linkedinAppReview.response.ResponseStructure;
+
 
 import jakarta.transaction.Transactional;
 
@@ -54,6 +57,12 @@ public class SocialMediaLogoutService {
 	
 	@Autowired
 	SocialAccountDao socialAccountDao;
+	
+	@Autowired
+	RedditDto redditDto;
+	
+	@Autowired
+	RedditDao redditDao;
 
 	public ResponseEntity<ResponseStructure<String>> disconnectFacebook(QuantumShareUser user) {
 		SocialAccounts accounts = user.getSocialAccounts();
@@ -112,34 +121,45 @@ public class SocialMediaLogoutService {
 	}
 
 	public ResponseEntity<ResponseStructure<String>> disconnectLinkedIn(QuantumShareUser user) {
-		
-		SocialAccounts accounts = user.getSocialAccounts();
-		if (accounts == null || accounts.getLinkedInProfileDto() == null) {
-			structure.setCode(404);
-			structure.setMessage("LinkedIn account not linked to this user");
-			structure.setStatus("error");
-			structure.setData(null);
-			structure.setPlatform("LinkedIn");
-			return new ResponseEntity<>(structure, HttpStatus.NOT_FOUND);
-		}
-		LinkedInProfileDto deleteUser = accounts.getLinkedInProfileDto();
-		accounts.setLinkedInProfileDto(null);
-		user.setSocialAccounts(accounts);
-		userDao.save(user);
-		
-		linkedInProfileDao.deleteUser(deleteUser);
-		
-		structure.setCode(HttpStatus.OK.value());
-		structure.setMessage("LinkedIn Profile Disconnected Successfully");
-		structure.setPlatform("LinkedIn");
-		structure.setStatus("success");
-		structure.setData(null);
-		return new ResponseEntity<ResponseStructure<String>>(structure, HttpStatus.OK);
-
+	    ResponseStructure<String> structure = new ResponseStructure<>();
+	    SocialAccounts accounts = user.getSocialAccounts();
+	    
+	    if (accounts == null || accounts.getLinkedInProfileDto() == null) {
+	        structure.setCode(404);
+	        structure.setMessage("LinkedIn account not linked to this user");
+	        structure.setStatus("error");
+	        structure.setData(null);
+	        structure.setPlatform("LinkedIn");
+	        return new ResponseEntity<>(structure, HttpStatus.NOT_FOUND);
+	    }
+	    
+	    LinkedInProfileDto deleteUser = accounts.getLinkedInProfileDto();
+	    accounts.setLinkedInProfileDto(null);
+	    
+	    // Check if both LinkedIn and Reddit accounts are null
+	    if (accounts.getRedditDto() == null) {
+	        // If both are null, set SocialAccounts to null in the user and delete the SocialAccounts entry
+	        user.setSocialAccounts(null);
+	        userDao.save(user); // Save the user with null social accounts
+	        socialAccountDao.deleteSocialAccount(accounts); // Delete the social accounts entry
+	    } else {
+	        user.setSocialAccounts(accounts);
+	        userDao.save(user); // Save the updated user
+	    }
+	    
+	    linkedInProfileDao.deleteUser(deleteUser);
+	    
+	    structure.setCode(HttpStatus.OK.value());
+	    structure.setMessage("LinkedIn Profile Disconnected Successfully");
+	    structure.setPlatform("LinkedIn");
+	    structure.setStatus("success");
+	    structure.setData(null);
+	    return new ResponseEntity<>(structure, HttpStatus.OK);
 	}
 
+
 	@Transactional
-	public ResponseEntity<ResponseStructure<String>> disconnectLinkedInPage(QuantumShareUser user) { 
+	public ResponseEntity<ResponseStructure<String>> disconnectLinkedInPage(QuantumShareUser user) {
 	    // Retrieve the user's LinkedIn profile
 	    SocialAccounts socialAccounts = user.getSocialAccounts();
 	    if (socialAccounts == null) {
@@ -190,17 +210,23 @@ public class SocialMediaLogoutService {
 	    if (linkedInProfileDto.getPages().isEmpty()) {
 	        // Remove the LinkedIn profile from the social accounts
 	        socialAccounts.setLinkedInProfileDto(null);
-	        linkedInProfileDao.deleteUser(linkedInProfileDto);
-	        
-	        // Remove the social accounts reference
-	        user.setSocialAccounts(null);
-	        
-	        // Delete the social accounts from the database
-	        socialAccountDao.deleteSocialAccount(socialAccounts);
-	    }
 
-	    // Save the updated user information
-	    userDao.save(user);
+	        // Check if both LinkedIn and Reddit accounts are null
+	        if (socialAccounts.getRedditDto() == null) {
+	            // If both are null, set SocialAccounts to null in the user and delete the SocialAccounts entry
+	            user.setSocialAccounts(null);
+	            userDao.save(user); // Save the user with null social accounts
+	            socialAccountDao.deleteSocialAccount(socialAccounts);  // Delete the social accounts entry
+	        } else {
+	            user.setSocialAccounts(socialAccounts);
+	            userDao.save(user); // Save the updated user
+	        }
+
+	        linkedInProfileDao.deleteUser(linkedInProfileDto);
+	    } else {
+	        user.setSocialAccounts(socialAccounts);
+	        userDao.save(user); // Save the updated user
+	    }
 
 	    // Prepare the response
 	    ResponseStructure<String> response = new ResponseStructure<>();
@@ -208,10 +234,51 @@ public class SocialMediaLogoutService {
 	    response.setMessage("LinkedIn Page Disconnected Successfully");
 	    response.setStatus("success");
 	    response.setPlatform("LinkedIn");
-	    
+
 	    // Set the disconnected page name in the response data
 	    response.setData("Page '" + linkedInPageDto.getLinkedinPageName() + "' disconnected successfully");
 
 	    return ResponseEntity.ok(response);
 	}
+
+	  
+	//DISCONNECT REDDIT 
+	public ResponseEntity<ResponseStructure<String>> disconnectRedditAccount(QuantumShareUser user) {
+	    ResponseStructure<String> responseStructure = new ResponseStructure<>();
+	    SocialAccounts accounts = user.getSocialAccounts();
+	    
+	    if (accounts == null || accounts.getRedditDto() == null) {
+	        responseStructure.setCode(HttpStatus.NOT_FOUND.value());
+	        responseStructure.setMessage("Reddit account not linked to this user");
+	        responseStructure.setStatus("error");
+	        responseStructure.setData(null);
+	        responseStructure.setPlatform("Reddit");
+	        return new ResponseEntity<>(responseStructure, HttpStatus.NOT_FOUND);
+	    }
+	    
+	    RedditDto deleteUser = accounts.getRedditDto();
+	    accounts.setRedditDto(null);
+	    
+	    // Check if both LinkedIn and Reddit accounts are null
+	    if (accounts.getLinkedInProfileDto() == null) {
+	        // If both are null, set SocialAccounts to null in the user and delete the SocialAccounts entry
+	        user.setSocialAccounts(null);
+	        userDao.save(user); // Save the user with null social accounts
+	        socialAccountDao.deleteSocialAccount(accounts); // Delete the social accounts entry
+	    } else {
+	        user.setSocialAccounts(accounts);
+	        userDao.save(user); // Save the updated user
+	    }
+	    
+	    redditDao.deleteUser(deleteUser);
+	    
+	    responseStructure.setCode(HttpStatus.OK.value());
+	    responseStructure.setMessage("Reddit account disconnected successfully");
+	    responseStructure.setPlatform("Reddit");
+	    responseStructure.setStatus("success");
+	    responseStructure.setData(null);
+	    return new ResponseEntity<>(responseStructure, HttpStatus.OK);
+	}
+
+
 }

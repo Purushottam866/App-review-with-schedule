@@ -1,4 +1,4 @@
-package com.linkedinAppReview.dto;
+ package com.linkedinAppReview.dto;
 
 import org.springframework.stereotype.Component;
 

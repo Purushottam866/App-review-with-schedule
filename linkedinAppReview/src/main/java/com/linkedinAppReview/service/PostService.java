@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.linkedinAppReview.configure.ConfigurationClass;
 import com.linkedinAppReview.dao.FacebookUserDao;
 import com.linkedinAppReview.dao.InstagramUserDao;
@@ -15,10 +16,12 @@ import com.linkedinAppReview.dao.LinkedInProfileDao;
 import com.linkedinAppReview.dao.QuantumShareUserDao;
 import com.linkedinAppReview.dto.LinkedInProfileDto;
 import com.linkedinAppReview.dto.MediaPost;
+import com.linkedinAppReview.dto.RedditDto;
 import com.linkedinAppReview.dto.SocialAccounts;
 import com.linkedinAppReview.response.ErrorResponse;
 import com.linkedinAppReview.response.ResponseStructure;
 import com.linkedinAppReview.response.ResponseWrapper;
+
 
 @Service
 public class PostService {
@@ -52,6 +55,15 @@ public class PostService {
 	
 	@Autowired
 	LinkedInProfileDao linkedInProfileDao;
+	
+	@Autowired
+	ResponseStructure<JsonNode> responseStructure;
+	
+	@Autowired	
+	RedditDto redditDto;
+	
+	@Autowired	
+	RedditService redditService;
 
 	public ResponseEntity<List<Object>> postOnFb(MediaPost mediaPost, MultipartFile mediaFile, SocialAccounts socialAccounts) {
 		List<Object> response = config.getList();
@@ -209,4 +221,162 @@ public class PostService {
 	    structure.setData(null);
 	    return new ResponseEntity<ResponseWrapper>(config.getResponseWrapper(structure), HttpStatus.BAD_REQUEST);
 	}
+	
+	//TEXT POSTING TO REDDIT
+	public ResponseStructure<JsonNode> submitPost(
+	        String subreddit,
+	        String title,
+	        SocialAccounts socialAccounts,
+	        MediaPost mediaPost) {
+
+		String text = mediaPost.getCaption();
+	    ResponseStructure<JsonNode> responseStructure = new ResponseStructure<>();
+
+	    // Check if mediaPlatform is null or empty
+	    if (mediaPost.getMediaPlatform() == null || mediaPost.getMediaPlatform().isEmpty()) {
+	        responseStructure.setMessage("Please select the media platform");
+	        responseStructure.setStatus("error");
+	        responseStructure.setCode(HttpStatus.BAD_REQUEST.value());
+	        responseStructure.setPlatform("Reddit");
+	        responseStructure.setData(null);
+	        return responseStructure;
+	    }
+
+	    if (mediaPost.getMediaPlatform().contains("Reddit")) {
+	        if (socialAccounts == null || socialAccounts.getRedditDto() == null) {
+	            responseStructure.setMessage("Please connect your Reddit account");
+	            responseStructure.setStatus("error");
+	            responseStructure.setCode(HttpStatus.NOT_FOUND.value());
+	            responseStructure.setPlatform("Reddit");
+	            responseStructure.setData(null);
+	            return responseStructure;
+	        }
+
+	        RedditDto redditUser = socialAccounts.getRedditDto();
+
+	        // Check if subreddit, title, or text are missing or empty
+	        if (subreddit == null || subreddit.trim().isEmpty()) {
+	            responseStructure.setMessage("Subreddit is required");
+	            responseStructure.setStatus("error");
+	            responseStructure.setCode(HttpStatus.BAD_REQUEST.value());
+	            responseStructure.setPlatform("Reddit");
+	            responseStructure.setData(null);
+	            return responseStructure;
+	        }
+
+	        if (title == null || title.trim().isEmpty()) {
+	            responseStructure.setMessage("Title is required");
+	            responseStructure.setStatus("error");
+	            responseStructure.setCode(HttpStatus.BAD_REQUEST.value());
+	            responseStructure.setPlatform("Reddit");
+	            responseStructure.setData(null);
+	            return responseStructure;
+	        }
+
+	        if (text == null || text.trim().isEmpty()) {
+	            responseStructure.setMessage("Text is required");
+	            responseStructure.setStatus("error");
+	            responseStructure.setCode(HttpStatus.BAD_REQUEST.value());
+	            responseStructure.setPlatform("Reddit");
+	            responseStructure.setData(null);
+	            return responseStructure;
+	        }
+
+	        // If all parameters are present and not empty, proceed to submit the post
+	        responseStructure = redditService.submitPost(subreddit, title, text, redditUser);
+
+	        // Customize the response structure
+	        if (responseStructure.getStatus().equals("success")) {
+	            responseStructure.setMessage("Text post submitted successfully");
+	            responseStructure.setCode(HttpStatus.OK.value());
+	            responseStructure.setPlatform("Reddit");
+	        }
+
+	        return responseStructure;
+	    } else {
+	        responseStructure.setMessage("Please connect your Reddit account");
+	        responseStructure.setStatus("error");
+	        responseStructure.setCode(HttpStatus.NOT_FOUND.value());
+	        responseStructure.setPlatform("Reddit");
+	        responseStructure.setData(null);
+	        return responseStructure;
+	    }
+	}
+
+
+
+		public ResponseEntity<ResponseStructure<JsonNode>> submitLinkPost(String subreddit, String title, String url,
+				SocialAccounts socialAccounts, MediaPost mediaPost) {
+			 ResponseStructure<JsonNode> responseStructure = new ResponseStructure<>();
+
+			    // Check if mediaPlatform is null or empty
+			    if (mediaPost.getMediaPlatform() == null || mediaPost.getMediaPlatform().isEmpty()) {
+			        responseStructure.setMessage("Please select the media platform");
+			        responseStructure.setStatus("error");
+			        responseStructure.setCode(HttpStatus.BAD_REQUEST.value());
+			        responseStructure.setPlatform("Reddit");
+			        responseStructure.setData(null);
+			        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(responseStructure);
+			    }
+
+			    if (mediaPost.getMediaPlatform().contains("Reddit")) {
+			        if (socialAccounts == null || socialAccounts.getRedditDto() == null) {
+			            responseStructure.setMessage("Please connect your Reddit account");
+			            responseStructure.setStatus("error");
+			            responseStructure.setCode(HttpStatus.NOT_FOUND.value());
+			            responseStructure.setPlatform("Reddit");
+			            responseStructure.setData(null);
+			            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(responseStructure);
+			        }
+
+			        RedditDto redditUser = socialAccounts.getRedditDto();
+
+			        // Check if subreddit, title, or url are missing or empty
+			        if (subreddit == null || subreddit.trim().isEmpty()) {
+			            responseStructure.setMessage("Subreddit is required");
+			            responseStructure.setStatus("error");
+			            responseStructure.setCode(HttpStatus.BAD_REQUEST.value());
+			            responseStructure.setPlatform("Reddit");
+			            responseStructure.setData(null);
+			            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(responseStructure);
+			        }
+
+			        if (title == null || title.trim().isEmpty()) {
+			            responseStructure.setMessage("Title is required");
+			            responseStructure.setStatus("error");
+			            responseStructure.setCode(HttpStatus.BAD_REQUEST.value());
+			            responseStructure.setPlatform("Reddit");
+			            responseStructure.setData(null);
+			            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(responseStructure);
+			        }
+
+			        if (url == null || url.trim().isEmpty()) {
+			            responseStructure.setMessage("URL is required");
+			            responseStructure.setStatus("error");
+			            responseStructure.setCode(HttpStatus.BAD_REQUEST.value());
+			            responseStructure.setPlatform("Reddit");
+			            responseStructure.setData(null);
+			            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(responseStructure);
+			        }
+
+			        // If all parameters are present and not empty, proceed to submit the post
+			        responseStructure = redditService.submitLinkPost(subreddit, title, url, redditUser);
+
+			        // Customize the response structure
+			        if (responseStructure.getStatus().equals("success")) {
+			            responseStructure.setMessage("Link post submitted successfully");
+			            responseStructure.setCode(HttpStatus.OK.value());
+			            responseStructure.setPlatform("Reddit");
+			        } 
+
+			        return ResponseEntity.status(responseStructure.getCode()).body(responseStructure);
+			    } else {
+			        responseStructure.setMessage("Please connect your Reddit account");
+			        responseStructure.setStatus("error");
+			        responseStructure.setCode(HttpStatus.NOT_FOUND.value());
+			        responseStructure.setPlatform("Reddit");
+			        responseStructure.setData(null);
+			        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(responseStructure);
+			    }
+			}
 }

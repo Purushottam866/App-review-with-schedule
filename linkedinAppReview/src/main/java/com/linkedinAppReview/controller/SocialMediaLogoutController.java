@@ -1,4 +1,4 @@
-package com.linkedinAppReview.controller;
+   package com.linkedinAppReview.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -133,4 +133,34 @@ public class SocialMediaLogoutController {
 	}
 
 
+	//REDDIT DISCONNECT
+	@GetMapping("/disconnect/reddit")
+	public ResponseEntity<ResponseStructure<String>> disconnectRedditAccount() {
+	    ResponseStructure<String> responseStructure = new ResponseStructure<>();
+	    String token = request.getHeader("Authorization");
+
+	    if (token == null || !token.startsWith("Bearer ")) {
+	        responseStructure.setCode(HttpStatus.UNAUTHORIZED.value());
+	        responseStructure.setMessage("Missing or invalid authorization token");
+	        responseStructure.setStatus("error");
+	        responseStructure.setPlatform(null);
+	        responseStructure.setData(null);
+	        return new ResponseEntity<>(responseStructure, HttpStatus.UNAUTHORIZED);
+	    }
+
+	    String jwtToken = token.substring(7); // remove "Bearer " prefix
+	    String userId = jwtUtilConfig.extractUserId(jwtToken);
+	    QuantumShareUser user = userDao.fetchUser(userId);
+
+	    if (user == null) {
+	        responseStructure.setCode(HttpStatus.NOT_FOUND.value());
+	        responseStructure.setMessage("User doesn't exist, please sign up");
+	        responseStructure.setStatus("error");
+	        responseStructure.setData(null);
+	        return new ResponseEntity<>(responseStructure, HttpStatus.NOT_FOUND);
+	    }
+
+	    // Call the service method to disconnect the Reddit account
+	    return logoutService.disconnectRedditAccount(user);
+	}
 }

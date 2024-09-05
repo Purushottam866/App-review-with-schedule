@@ -19,10 +19,10 @@ import lombok.Data;
 @Component
 public class LinkedInProfileDto {
 
-	 	@Id
+		@Id
 	    @GeneratedValue(strategy = GenerationType.IDENTITY)
 	    private int profileUid;
-
+ 
 	    private String linkedinProfileURN;
 	    private String linkedinProfileUserName;
 	    private String linkedinProfileEmail;

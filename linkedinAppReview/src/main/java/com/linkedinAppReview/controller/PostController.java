@@ -8,9 +8,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.linkedinAppReview.configure.ConfigurationClass;
 import com.linkedinAppReview.configure.JwtUtilConfig;
 import com.linkedinAppReview.dao.FacebookUserDao;
@@ -20,6 +22,7 @@ import com.linkedinAppReview.dto.QuantumShareUser;
 import com.linkedinAppReview.exception.CommonException;
 import com.linkedinAppReview.response.ResponseStructure;
 import com.linkedinAppReview.response.ResponseWrapper;
+import com.linkedinAppReview.service.PostSchedulingService;
 import com.linkedinAppReview.service.PostService;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -48,6 +51,9 @@ public class PostController {
 
 	@Autowired
 	QuantumShareUserDao userDao;
+	
+	@Autowired
+	PostSchedulingService postSchedulingService;
 
 	@PostMapping("/post/file/facebook")
 	public ResponseEntity<List<Object>> postToFacebook(MultipartFile mediaFile, @ModelAttribute MediaPost mediaPost) {
@@ -189,7 +195,7 @@ public class PostController {
 		}
 	}
     
-  //TEXT AND MEDIA UPLOAD TO LinkedIn PROFILE
+  //TEXT AND MEDIA UPLOAD TO LinkedIn PAGE
     @PostMapping("/postToLinkedInPage") 
     public ResponseEntity<ResponseWrapper> createPost(MultipartFile mediaFile, @ModelAttribute MediaPost mediaPost) {
 
@@ -236,4 +242,138 @@ public class PostController {
 			throw new CommonException(e.getMessage());
 		}
 	}
+    
+    // REDDIT TEXT POSTING
+    @PostMapping("/textPost")
+	 public ResponseEntity<ResponseStructure<JsonNode>> submitTextPost(
+	         @RequestParam("sr") String subreddit,
+	         @RequestParam("title") String title,
+	         @ModelAttribute MediaPost mediaPost,
+	         HttpServletRequest request) {
+
+	     String token = request.getHeader("Authorization");
+	     ResponseStructure<JsonNode> responseStructure = new ResponseStructure<>();
+
+	     if (token == null || !token.startsWith("Bearer ")) {
+	         responseStructure.setMessage("Missing or invalid authorization token");
+	         responseStructure.setStatus("error");
+	         responseStructure.setCode(HttpStatus.UNAUTHORIZED.value());
+	         responseStructure.setPlatform("Reddit");
+	         responseStructure.setData(null);
+	         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(responseStructure);
+	     }
+
+	     String jwtToken = token.substring(7); // remove "Bearer " prefix
+	     String userId = jwtUtilConfig.extractUserId(jwtToken);
+	     QuantumShareUser user = userDao.fetchUser(userId);
+
+	     if (user == null) {
+	         responseStructure.setMessage("User doesn't exist, please sign up");
+	         responseStructure.setStatus("error");
+	         responseStructure.setCode(HttpStatus.NOT_FOUND.value());
+	         responseStructure.setPlatform("Reddit");
+	         responseStructure.setData(null);
+	         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(responseStructure);
+	     }
+
+	     responseStructure = postServices.submitPost(subreddit, title, user.getSocialAccounts(), mediaPost);
+
+	     return ResponseEntity.status(responseStructure.getCode()).body(responseStructure);
+	 }
+
+
+    
+    //REDDIT LINK POSTING
+    @PostMapping("/linkPost")
+    public ResponseEntity<ResponseStructure<JsonNode>> submitLinkPost(
+            @RequestParam("sr") String subreddit,
+            @RequestParam("title") String title,
+            @RequestParam("url") String url,
+            @ModelAttribute MediaPost mediaPost) {
+
+        ResponseStructure<JsonNode> responseStructure = new ResponseStructure<>();
+        String token = request.getHeader("Authorization");
+
+        if (token == null || !token.startsWith("Bearer ")) {
+            responseStructure.setMessage("Missing or invalid authorization token");
+            responseStructure.setStatus("error");
+            responseStructure.setCode(HttpStatus.UNAUTHORIZED.value());
+            responseStructure.setPlatform("Reddit");
+            responseStructure.setData(null);
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(responseStructure);
+        }
+
+        String jwtToken = token.substring(7); // remove "Bearer " prefix
+        String userId = jwtUtilConfig.extractUserId(jwtToken);
+        QuantumShareUser user = userDao.fetchUser(userId);
+
+        if (user == null) {
+            responseStructure.setMessage("User doesn't exist, please sign up");
+            responseStructure.setStatus("error");
+            responseStructure.setCode(HttpStatus.NOT_FOUND.value());
+            responseStructure.setPlatform("Reddit");
+            responseStructure.setData(null);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(responseStructure);
+        }
+
+        // User is authenticated and authorized, submit the link post
+        ResponseEntity<ResponseStructure<JsonNode>> postResponse = postServices.submitLinkPost(subreddit, title, url, user.getSocialAccounts(), mediaPost);
+
+        // Extract the response body from ResponseEntity
+        responseStructure = postResponse.getBody();
+
+        // Customize the response structure
+        if (responseStructure != null && responseStructure.getStatus().equals("success")) {
+            responseStructure.setMessage("Link post submitted successfully");
+            responseStructure.setCode(HttpStatus.OK.value());
+            responseStructure.setPlatform("Reddit");
+        }
+
+        return ResponseEntity.status(responseStructure.getCode()).body(responseStructure);
+    }
+    
+    @PostMapping("/scheduleTextPost")
+    public ResponseEntity<ResponseStructure<JsonNode>> scheduleTextPost(
+            @RequestParam("sr") String subreddit,
+            @RequestParam("title") String title,
+            @ModelAttribute MediaPost mediaPost) {
+
+        String token = request.getHeader("Authorization");
+        ResponseStructure<JsonNode> responseStructure = new ResponseStructure<>();
+
+        if (token == null || !token.startsWith("Bearer ")) {
+            responseStructure.setMessage("Missing or invalid authorization token");
+            responseStructure.setStatus("error");
+            responseStructure.setCode(HttpStatus.UNAUTHORIZED.value());
+            responseStructure.setPlatform("Reddit");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(responseStructure);
+        }
+
+        String jwtToken = token.substring(7);
+        String userId = jwtUtilConfig.extractUserId(jwtToken);
+        QuantumShareUser user = userDao.fetchUser(userId);
+
+        if (user == null) {
+            responseStructure.setMessage("User doesn't exist, please sign up");
+            responseStructure.setStatus("error");
+            responseStructure.setCode(HttpStatus.NOT_FOUND.value());
+            responseStructure.setPlatform("Reddit");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(responseStructure);
+        }
+
+        if (mediaPost.getScheduledTime() != null) {
+            // Schedule the post
+            postSchedulingService.schedulePost(subreddit, title, mediaPost,  user);
+            responseStructure.setMessage("Post scheduled successfully");
+            responseStructure.setStatus("OK");
+            responseStructure.setCode(HttpStatus.OK.value());
+            responseStructure.setPlatform("Reddit");
+            return ResponseEntity.ok(responseStructure);
+        } else {
+            // Proceed with immediate posting
+            ResponseStructure<JsonNode> postResponse = postServices.submitPost(subreddit, title,user.getSocialAccounts(), mediaPost);
+            return ResponseEntity.status(postResponse.getCode()).body(postResponse);
+        }
+    }
+
 }
