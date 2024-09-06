@@ -53,6 +53,9 @@ public class RedditService {
 	    @Autowired
 	    RedditDao redditDao;
 	    
+	    @Autowired
+	    HttpEntity<MultiValueMap<String, String>> entity;
+	    
 	    private Instant accessTokenExpiration;
 	    
 	    RestTemplate restTemplate = new RestTemplate();
@@ -84,7 +87,7 @@ public class RedditService {
 	        body.add("code", code);
 	        body.add("redirect_uri", redirectUri);
 
-	        HttpEntity<MultiValueMap<String, String>> entity = new HttpEntity<>(body, headers);
+	      //  HttpEntity<MultiValueMap<String, String>> entity = new HttpEntity<>(body, headers);
 
 	        ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, entity, String.class);
 
@@ -197,7 +200,7 @@ public class RedditService {
 	        body.add("grant_type", "refresh_token");
 	        body.add("refresh_token", refreshToken);
 
-	        HttpEntity<MultiValueMap<String, String>> entity = new HttpEntity<>(body, headers);
+	    //    HttpEntity<MultiValueMap<String, String>> entity = new HttpEntity<>(body, headers);
 
 	        ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, entity, String.class);
 
@@ -271,7 +274,7 @@ public class RedditService {
 	        headers.set("Authorization", "Bearer " + accessToken);
 	        headers.set("User-Agent", userAgent);
 
-	        HttpEntity<String> entity = new HttpEntity<>(headers);
+	//        HttpEntity<String> entity = new HttpEntity<>(headers);
 
 	        ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
 
@@ -317,7 +320,7 @@ public class RedditService {
 
 	        String accessToken = redditUser.getRedditAccessToken();
 
-	        HttpHeaders headers = new HttpHeaders();
+	  //      HttpHeaders headers = new HttpHeaders();
 	        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
 	        headers.set("Authorization", "Bearer " + accessToken);
 	        headers.set("User-Agent", userAgent);
@@ -328,7 +331,7 @@ public class RedditService {
 	        bodyMap.add("title", title);
 	        bodyMap.add("text", text);
 
-	        HttpEntity<MultiValueMap<String, String>> entity = new HttpEntity<>(bodyMap, headers);
+	//        HttpEntity<MultiValueMap<String, String>> entity = new HttpEntity<>(bodyMap, headers);
 
 	        ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, entity, String.class);
 
@@ -365,7 +368,7 @@ public class RedditService {
 	        String endpoint = "https://oauth.reddit.com/api/submit";
 	        String accessToken = redditUser.getRedditAccessToken();
 
-	        HttpHeaders headers = new HttpHeaders();
+	   //     HttpHeaders headers = new HttpHeaders();
 	        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
 	        headers.set("Authorization", "Bearer " + accessToken);
 	        headers.set("User-Agent", userAgent);

@@ -13,6 +13,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.concurrent.ConcurrentTaskScheduler;
 import org.springframework.stereotype.Component;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
 import com.amazonaws.services.s3.model.ObjectMetadata;
@@ -43,6 +44,11 @@ public class ConfigurationClass {
 	public HttpEntity<String> getHttpEntity(String jsonString, HttpHeaders headers) {
 		return new HttpEntity<>(jsonString, headers);
 	}
+	
+	@Bean
+    public HttpEntity<MultiValueMap<String, String>> httpEntity(MultiValueMap<String, String> bodyMap, HttpHeaders httpHeaders) {
+        return new HttpEntity<>(bodyMap, httpHeaders);
+    }
 
 	@Bean
 	@Lazy
