@@ -170,6 +170,64 @@ public class PostService {
 	    return new ResponseEntity<ResponseWrapper>(config.getResponseWrapper(structure), HttpStatus.BAD_REQUEST);
 	}
 
+	// POSTING ON LINKEDIN PROFILE WITH SCHEDULE
+	public ResponseEntity<ResponseWrapper> postOnLinkedInSchedule(MediaPost mediaPost, MultipartFile mediaFile,
+	        SocialAccounts socialAccounts) {
+
+	    if (mediaPost.getMediaPlatform().contains("LinkedIn")) {
+	        if (socialAccounts == null || socialAccounts.getLinkedInProfileDto() == null) {
+	            structure.setMessage("Please connect your LinkedIn account");
+	            structure.setCode(HttpStatus.NOT_FOUND.value());
+	            structure.setPlatform("LinkedIn");
+	            structure.setStatus("error");
+	            structure.setData(null);
+	            return new ResponseEntity<ResponseWrapper>(config.getResponseWrapper(structure), HttpStatus.NOT_FOUND);
+	        }
+
+	        LinkedInProfileDto linkedInProfileUser = socialAccounts.getLinkedInProfileDto();
+	        ResponseStructure<String> response;
+
+	     // Debugging print statements before the condition checks
+	        System.out.println("MediaFile: " + (mediaFile != null ? mediaFile.getOriginalFilename() : "null"));
+	        System.out.println("MediaFile Size: " + (mediaFile != null ? mediaFile.getSize() : "0"));
+	        System.out.println("MediaFile Content Type: " + (mediaFile != null ? mediaFile.getContentType() : "null"));
+	        System.out.println("Caption: " + (mediaPost.getCaption() != null ? mediaPost.getCaption() : "null"));
+
+	        // Conditional checks				
+	        if (mediaFile != null && !mediaFile.isEmpty() && mediaPost.getCaption() != null && !mediaPost.getCaption().isEmpty()) {
+	            System.out.println("Both media file and caption are present.");
+	            response = linkedInProfilePostService.uploadImageToLinkedIn(mediaFile, mediaPost.getCaption(), linkedInProfileUser);
+	        } else if (mediaPost.getCaption() != null && !mediaPost.getCaption().isEmpty()) {
+	            System.out.println("Only caption is present.");
+	            response = linkedInProfilePostService.createPostProfile(mediaPost.getCaption(), linkedInProfileUser);
+	        } else if (mediaFile != null && !mediaFile.isEmpty()) {
+	            System.out.println("Only media file is present.");
+	            response = linkedInProfilePostService.uploadImageToLinkedIn(mediaFile, "", linkedInProfileUser);
+	        } else {
+	            System.out.println("Neither media file nor caption is present.");
+	            structure.setStatus("Failure");
+	            structure.setMessage("Please connect your LinkedIn account");
+	            structure.setCode(HttpStatus.BAD_REQUEST.value());
+	            return new ResponseEntity<ResponseWrapper>(config.getResponseWrapper(structure), HttpStatus.BAD_REQUEST);
+	        }
+
+
+
+	        // Map the response from ResponseStructure to ResponseWrapper
+	        structure.setStatus(response.getStatus());
+	        structure.setMessage(response.getMessage());
+	        structure.setCode(response.getCode());
+	        structure.setData(response.getData());
+	        return new ResponseEntity<ResponseWrapper>(config.getResponseWrapper(structure), HttpStatus.valueOf(response.getCode()));
+	    }
+
+	    structure.setMessage("Please connect your LinkedIn account");
+	    structure.setCode(HttpStatus.BAD_REQUEST.value());
+	    structure.setPlatform("LinkedIn");
+	    structure.setStatus("error");
+	    structure.setData(null);
+	    return new ResponseEntity<ResponseWrapper>(config.getResponseWrapper(structure), HttpStatus.BAD_REQUEST);
+	}
 	
 	// POSTING ON LINKEDIN PAGE
 	public ResponseEntity<ResponseWrapper> postOnLinkedInPage(MediaPost mediaPost, MultipartFile mediaFile,
@@ -281,7 +339,7 @@ public class PostService {
 	            responseStructure.setData(null);
 	            return responseStructure;
 	        }
-
+	        //System.out.println(subreddit + " " + title + " " + text + " " + redditUser);
 	        // If all parameters are present and not empty, proceed to submit the post
 	        responseStructure = redditService.submitPost(subreddit, title, text, redditUser);
 

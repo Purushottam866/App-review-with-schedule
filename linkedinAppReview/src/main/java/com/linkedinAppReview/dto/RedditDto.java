@@ -1,5 +1,7 @@
 package com.linkedinAppReview.dto;
 
+import java.time.Instant;
+
 import org.springframework.stereotype.Component;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -24,4 +26,7 @@ public class RedditDto {
 	@Column(length = 1000)
 	private String redditAccessToken;
 	private String redditRefreshToken;
+	@Column
+    private Instant tokenIssuedTime; 
+	private int redditSubscribers;
 }

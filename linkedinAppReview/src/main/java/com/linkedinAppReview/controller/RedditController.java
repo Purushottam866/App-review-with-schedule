@@ -154,6 +154,8 @@ public class RedditController {
 		 String token = request.getHeader("Authorization");
 	        ResponseStructure<Map<String, String>> responseStructure = new ResponseStructure<>();
 
+	      
+	        
 	        if (token == null || !token.startsWith("Bearer ")) {
 	            responseStructure.setMessage("Missing or invalid authorization token");
 	            responseStructure.setStatus("error");
@@ -164,10 +166,14 @@ public class RedditController {
 	        }
 
 	        String jwtToken = token.substring(7); // remove "Bearer " prefix
+	        
+	        
+	        
 	        String userId = jwtUtilConfig.extractUserId(jwtToken);
 	        QuantumShareUser user = userDao.fetchUser(userId);
-
+	       
 	        if (user == null) {
+	        	
 	            responseStructure.setMessage("User doesn't exist, please sign up");
 	            responseStructure.setStatus("error");
 	            responseStructure.setCode(HttpStatus.NOT_FOUND.value());
@@ -175,7 +181,7 @@ public class RedditController {
 	            responseStructure.setData(null);
 	            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(responseStructure);
 	        }
-
+	       
 	        responseStructure = redditService.getAccessToken(code,user);
 
 	        // Customize the response structure
@@ -187,16 +193,53 @@ public class RedditController {
 
 	        return ResponseEntity.status(responseStructure.getCode()).body(responseStructure);
 	    
-	    }
+	    } 
 	 
-	 
-	 @GetMapping("/refreshToken")
-	    public ResponseEntity<ResponseStructure<Map<String, String>>> handleRefreshToken(@RequestParam("refreshToken") String refreshToken) {
-	        // Use the authorization code to get an access token and refresh token
-	        ResponseStructure<Map<String, String>> responseStructure = redditService.refreshAccessToken(refreshToken);
-	        return ResponseEntity.status(responseStructure.getCode()).body(responseStructure);
-	    }
-	 
-	 
-	
+	 @PostMapping("/refreshtoken")
+	 public ResponseEntity<ResponseStructure<Map<String, String>>> refreshToken() {
+		 String token = request.getHeader("Authorization");
+	        ResponseStructure<Map<String, String>> responseStructure = new ResponseStructure<>();
+
+	        System.out.println("Controller request 1");
+	        
+	        if (token == null || !token.startsWith("Bearer ")) {
+	            responseStructure.setMessage("Missing or invalid authorization token");
+	            responseStructure.setStatus("error");
+	            responseStructure.setCode(HttpStatus.UNAUTHORIZED.value());
+	            responseStructure.setPlatform("Reddit");
+	            responseStructure.setData(null);
+	            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(responseStructure);
+	        }
+
+	        String jwtToken = token.substring(7); // remove "Bearer " prefix
+	        
+	        
+	        
+	        String userId = jwtUtilConfig.extractUserId(jwtToken);
+	        QuantumShareUser user = userDao.fetchUser(userId);
+	       
+	        if (user == null) {
+	        	
+	            responseStructure.setMessage("User doesn't exist, please sign up");
+	            responseStructure.setStatus("error");
+	            responseStructure.setCode(HttpStatus.NOT_FOUND.value());
+	            responseStructure.setPlatform("Reddit");
+	            responseStructure.setData(null);
+	            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(responseStructure);
+	        }
+
+	     System.out.println("Controller request 2");
+
+	     // Call the service method to check and refresh access token
+	     ResponseEntity<ResponseStructure<Map<String, String>>> serviceResponse = redditService.checkAndRefreshAccessToken(user);
+
+	     // Customize the response structure based on service response
+	     if (serviceResponse.getBody().getStatus().equals("success")) {
+	         responseStructure.setMessage("Reddit connected successfully");
+	         responseStructure.setCode(HttpStatus.OK.value());
+	         responseStructure.setPlatform("Reddit");
+	     }
+
+	     return ResponseEntity.status(serviceResponse.getBody().getCode()).body(serviceResponse.getBody());
+	 }
 }

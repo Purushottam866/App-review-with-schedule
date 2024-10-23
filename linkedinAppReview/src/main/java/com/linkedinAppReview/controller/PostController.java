@@ -1,5 +1,6 @@
 package com.linkedinAppReview.controller;
 
+import java.io.IOException;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -364,7 +365,7 @@ public class PostController {
         if (mediaPost.getScheduledTime() != null) {
             // Schedule the post
             postSchedulingService.schedulePost(subreddit, title, mediaPost,  user);
-            responseStructure.setMessage("Post scheduled successfully");
+            responseStructure.setMessage("Post scheduled successfully on " + mediaPost.getScheduledTime());
             responseStructure.setStatus("OK");
             responseStructure.setCode(HttpStatus.OK.value());
             responseStructure.setPlatform("Reddit");
@@ -375,5 +376,70 @@ public class PostController {
             return ResponseEntity.status(postResponse.getCode()).body(postResponse);
         }
     }
+    
+  //TEXT AND MEDIA UPLOAD TO LinkedIn PROFILE
+    @PostMapping("/linkedin-schedule") 
+    public ResponseEntity<ResponseWrapper> createPostTOProfileSchedule(MultipartFile mediaFile, @ModelAttribute MediaPost mediaPost) throws IOException {
+
+        System.out.println(mediaPost.getCaption());
+        
+        String token = request.getHeader("Authorization");
+        if (token == null || !token.startsWith("Bearer ")) {
+            structure.setCode(115);
+            structure.setMessage("Missing or invalid authorization token");
+            structure.setStatus("error");
+            structure.setPlatform("LinkedIn");
+            structure.setData(null);
+            return new ResponseEntity<ResponseWrapper>(configuration.getResponseWrapper(structure),
+                    HttpStatus.UNAUTHORIZED);
+        } 
+
+        String jwtToken = token.substring(7); // remove "Bearer " prefix
+        String userId = jwtUtilConfig.extractUserId(jwtToken);
+        QuantumShareUser user = userDao.fetchUser(userId);
+        if (user == null) {
+            structure.setCode(HttpStatus.NOT_FOUND.value());
+            structure.setMessage("User doesn't exist, please signup");
+            structure.setStatus("error");
+            structure.setData(null);
+            structure.setPlatform("LinkedIn");
+            return new ResponseEntity<ResponseWrapper>(configuration.getResponseWrapper(structure),
+                    HttpStatus.NOT_FOUND);
+        }
+
+        try {
+            if (mediaPost.getMediaPlatform() == null || mediaPost.getMediaPlatform().isEmpty()) {
+                structure.setCode(HttpStatus.BAD_REQUEST.value());
+                structure.setStatus("error");
+                structure.setMessage("Please select a social media platform");
+                structure.setData(null);
+                structure.setPlatform("LinkedIn");
+                return new ResponseEntity<ResponseWrapper>(configuration.getResponseWrapper(structure),
+                        HttpStatus.BAD_REQUEST);
+            }
+
+            // Check if scheduling is needed
+            if (mediaPost.getScheduledTime() != null) {
+                // Schedule the post for LinkedIn
+                postSchedulingService.scheduleLinkedInPost(mediaPost, mediaFile, user);
+                structure.setCode(HttpStatus.OK.value());
+                structure.setStatus("success");
+                structure.setMessage("LinkedIn post scheduled successfully for " + mediaPost.getScheduledTime());
+                structure.setData(null);
+                structure.setPlatform("LinkedIn");
+                return new ResponseEntity<ResponseWrapper>(configuration.getResponseWrapper(structure),
+                        HttpStatus.OK);
+            } else {
+                // No scheduled time provided, post immediately
+                return postServices.postOnLinkedIn(mediaPost, mediaFile, user.getSocialAccounts());
+            }
+
+        } catch (NullPointerException e) {
+            throw new NullPointerException(e.getMessage());
+        } catch (IllegalArgumentException e) {
+            throw new CommonException(e.getMessage());
+        }
+    }
+
 
 }

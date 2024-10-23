@@ -17,7 +17,7 @@ public class LinkedinAppReviewApplication {
 
 	@Bean
 	public WebMvcConfigurer configurer() {
-
+		
 		return new WebMvcConfigurer() {
 			@Override
 			public void addCorsMappings(CorsRegistry reg) { 

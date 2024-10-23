@@ -141,6 +141,9 @@ public class LinkedInProfilePostService {
 	    try {
 	        System.out.println("controller is here 1 " + caption + " " + mediaFile);
 
+	        System.out.println("File = " + mediaFile);
+	        System.out.println("caption = " + caption);
+	        
 	        String recipeType = determineRecipeType(mediaFile);
 	        String mediaType = determineMediaType(mediaFile);
 	        JsonNode uploadResponse = registerUpload(recipeType, accessToken, profileURN);
